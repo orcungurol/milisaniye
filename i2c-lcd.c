@@ -104,13 +104,5 @@ void lcd_clear()
 {
 	lcd_send_cmd(0x01);
 }
-void lcd_nobacklight()
-{
-	lcd_send_cmd(0x00);
-}
 
-void lcd_backlight()
-{
-	lcd_send_cmd(0x08);
-}
 
