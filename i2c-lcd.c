@@ -39,10 +39,19 @@ void lcd_send_data (char data)
 
 void lcd_init (void)
 {
-	lcd_send_cmd (0x02);
-	lcd_send_cmd (0x28);
-	lcd_send_cmd (0x0c);
+	HAL_Delay(250);
+	lcd_send_cmd (_RETURN_HOME);
+	HAL_Delay(500);
+	lcd_send_cmd (_LCD_INIT);
+	HAL_Delay(500);
+	lcd_send_cmd (_UNDERLINE_ON);
+	HAL_Delay(500);
+	lcd_send_cmd (_CURSOR_OFF);
+	HAL_Delay(500);
 	lcd_send_cmd (LCD_SET_DDRAM_ADDRESS);
+	HAL_Delay(500);
+	lcd_send_cmd (_CLEAR);
+	HAL_Delay(500);
 }
 
 
@@ -91,18 +100,26 @@ void lcd_gotoxy(uint8_t x, uint8_t y)
 
 void lcd_home()
 {
-	lcd_send_cmd(0x02);
-	
+	lcd_send_cmd(_RETURN_HOME);	
 }
 
 void lcd_shiftDecrement()
 {
-	lcd_send_cmd(0xc0);
+	lcd_send_cmd(_SECOND_ROW);
+	lcd_send_cmd(_CURSOR_OFF);
 }
 
 void lcd_clear()
 {
-	lcd_send_cmd(0x01);
+	lcd_send_cmd(_CLEAR);
+}
+void lcd_nobacklight()
+{
+	lcd_send_cmd(0x00);
 }
 
+void lcd_backlight()
+{
+	lcd_send_cmd(0x08);
+}
 
