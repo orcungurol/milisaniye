@@ -57,6 +57,7 @@ void lcd_init (void)
 
 void lcd_send_string (char *str)
 {
+	HAL_Delay(25);
 	while (*str) lcd_send_data (*str++);
 }
 
@@ -122,4 +123,5 @@ void lcd_backlight()
 {
 	lcd_send_cmd(0x08);
 }
+
 
