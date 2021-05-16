@@ -37,23 +37,53 @@
 #include "gps.h"
 #include "stm32f1xx.h"
 #include "stm32f1xx_hal_uart.h"
-#if (GPS_DEBUG == 1)
-#include <usbd_cdc_if.h>
-#endif
+
 
 uint8_t rx_data = 0;
 uint8_t rx_buffer[GPSBUFSIZE];
 uint8_t rx_index = 0;
+uint8_t parse_err;
+
+typedef struct{
+    // calculated values
+    float dec_longitude;
+    float dec_latitude;
+    float altitude_ft;
+
+    // GGA - Global Positioning System Fixed Data
+    float nmea_longitude;
+    float nmea_latitude;
+    float utc_time;
+    char ns, ew;
+    int lock;
+    int satelites;
+    float hdop;
+    float msl_altitude;
+    char msl_units;
+
+    // RMC - Recommended Minimmum Specific GNS Data
+    char rmc_status;
+    float speed_k;
+    float course_d;
+    int date;
+
+    // GLL
+    char gll_status;
+
+    // VTG - Course over ground, ground speed
+    float course_t; // ground speed true
+    char course_t_unit;
+    float course_m; // magnetic
+    char course_m_unit;
+    char speed_k_unit;
+    float speed_km; // speek km/hr
+    char speed_km_unit;
+} GPS_t;
+
 GPS_t GPS;
+
 float enlem;
 float boylam;
-#if (GPS_DEBUG == 1)
-void GPS_print(char *data){
-	char buf[GPSBUFSIZE] = {0,};
-	sprintf(buf, "%s\n", data);
-	CDC_Transmit_FS((unsigned char *) buf, (uint16_t) strlen(buf));
-}
-#endif
 
 void GPS_Init()
 {
@@ -65,11 +95,6 @@ void GPS_UART_CallBack(){
 	if (rx_data != '\n' && rx_index < sizeof(rx_buffer)) {
 		rx_buffer[rx_index++] = rx_data;
 	} else {
-
-		#if (GPS_DEBUG == 1)
-		GPS_print((char*)rx_buffer);
-		#endif
-
 		if(GPS_validate((char*) rx_buffer))
 			GPS_parse((char*) rx_buffer);
 		rx_index = 0;
@@ -117,19 +142,26 @@ int GPS_validate(char *nmeastr){
         && (checkcalcstr[1] == check[1])) ? 1 : 0 ;
 }
 
-void GPS_parse(char *GPSstrParse){
-    if(!strncmp(GPSstrParse, "$GPGGA", 6)){
+void GPS_parse(char *GPSstrParse) {
+
+    if (!strncmp(GPSstrParse, "$GPGGA", 6)) {
     	if (sscanf(GPSstrParse, "$GPGGA,%f,%f,%c,%f,%c,%d,%d,%f,%f,%c", &GPS.utc_time, &GPS.nmea_latitude, &GPS.ns, &GPS.nmea_longitude, &GPS.ew, &GPS.lock, &GPS.satelites, &GPS.hdop, &GPS.msl_altitude, &GPS.msl_units) >= 1){
     		GPS.dec_latitude = GPS_nmea_to_dec(GPS.nmea_latitude, GPS.ns);
     		GPS.dec_longitude = GPS_nmea_to_dec(GPS.nmea_longitude, GPS.ew);
-			  enlem = GPS.dec_latitude;
-				boylam = GPS.dec_longitude;
+			enlem  = GPS.dec_latitude;
+			boylam = GPS.dec_longitude;
     		return;
     	}
     }
-    else if (!strncmp(GPSstrParse, "$GPRMC", 6)){
-    	if(sscanf(GPSstrParse, "$GPRMC,%f,%f,%c,%f,%c,%f,%f,%d", &GPS.utc_time, &GPS.nmea_latitude, &GPS.ns, &GPS.nmea_longitude, &GPS.ew, &GPS.speed_k, &GPS.course_d, &GPS.date) >= 1)
-    		return;
+    else if (!strncmp(GPSstrParse, "$GPRMC", 6)) {
+
+    	if(sscanf(GPSstrParse, "$GPRMC,%f,%f,%c,%f,%c,%f,%f,%d", &GPS.utc_time, &GPS.nmea_latitude, &GPS.ns, &GPS.nmea_longitude, &GPS.ew, &GPS.speed_k, &GPS.course_d, &GPS.date) >= 1) {
+			GPS.dec_latitude = GPS_nmea_to_dec(GPS.nmea_latitude, GPS.ns);
+			GPS.dec_longitude = GPS_nmea_to_dec(GPS.nmea_longitude, GPS.ew);
+			enlem  = GPS.dec_latitude;
+			boylam = GPS.dec_longitude;
+    	}
+		return;
 
     }
     else if (!strncmp(GPSstrParse, "$GPGLL", 6)){
